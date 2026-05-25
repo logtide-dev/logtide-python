@@ -184,18 +184,3 @@ def test_global_metadata():
     assert client._buffer[0].metadata["version"] == "1.0.0"
 
     client.close()
-
-
-if __name__ == "__main__":
-    # Run all tests
-    test_client_initialization()
-    test_logging_methods()
-    test_trace_id_context()
-    test_auto_trace_id()
-    test_error_serialization()
-    test_buffer_management()
-    test_metrics()
-    test_circuit_breaker_state()
-    test_global_metadata()
-
-    print("✅ All tests passed!")
