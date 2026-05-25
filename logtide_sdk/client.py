@@ -687,7 +687,7 @@ class LogTideClient:
         entry.metadata = _process_value(entry.metadata, "root", lim)
 
         # Enforce total entry size
-        raw = json.dumps(entry.to_dict())
+        raw = json.dumps(entry.to_dict(), default=lambda o: repr(o))
         if len(raw.encode()) > lim.max_log_size:
             if self.options.debug:
                 print(f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata")

@@ -492,6 +492,7 @@ class AsyncLogTideClient:
             return metadata_or_error
         return {"exception": serialize_exception(metadata_or_error)}
 
+    # NOTE: this is twice. (both in async and regular clients)
     def _apply_payload_limits(self, entry: LogEntry) -> None:
         """Enforce payload limits on entry.metadata in-place."""
         if not entry.metadata:
@@ -499,7 +500,7 @@ class AsyncLogTideClient:
         lim = self._payload_limits
         entry.metadata = _process_value(entry.metadata, "root", lim)
 
-        raw = json.dumps(entry.to_dict())
+        raw = json.dumps(entry.to_dict(), default=lambda o: repr(o))
         if len(raw.encode()) > lim.max_log_size:
             if self.options.debug:
                 print(f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata")
