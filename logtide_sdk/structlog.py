@@ -1,5 +1,5 @@
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, FrozenSet
 
 if TYPE_CHECKING:
     from structlog.typing import EventDict, WrappedLogger
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 from logtide_sdk import LogEntry, LogLevel, serialize_exception
 
-LOGGING_RESERVED_ATTRS: frozenset[str] = frozenset(
+LOGGING_RESERVED_ATTRS: FrozenSet[str] = frozenset(
     [
         "args",
         "asctime",
@@ -45,9 +45,7 @@ class LogTideProcessor:
         self.service = service
 
     def __call__(self, logger: "WrappedLogger", name: str, event_dict: "EventDict") -> "EventDict":
-        metadata = {
-            k: v for k, v in event_dict.items() if k not in RESERVED_ATTRS and not k.startswith("_")
-        }
+        metadata = {k: v for k, v in event_dict.items() if k not in RESERVED_ATTRS}
 
         exc_info = event_dict.get("exc_info", False)
         if exc_info:
