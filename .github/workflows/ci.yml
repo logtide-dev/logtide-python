@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[async,starlette,flask,django,fastapi]"
-          pip install pytest pytest-asyncio pytest-cov freezegun build
+          pip install pytest pytest-asyncio pytest-cov pytest-mock freezegun build
 
       - name: Run tests
         run: pytest tests/ -v --tb=short

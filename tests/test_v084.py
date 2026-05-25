@@ -232,14 +232,12 @@ def test_log_entry_preserves_non_utc_offset():
 
 
 def test_to_dict_omits_none_trace_id():
-    """to_dict() must omit trace_id when None (server rejects null)."""
     entry = LogEntry(service="svc", level=LogLevel.INFO, message="hello")
     d = entry.to_dict()
     assert "trace_id" not in d
 
 
 def test_to_dict_includes_trace_id_when_set():
-    """to_dict() must include trace_id when it has a value."""
     entry = LogEntry(service="svc", level=LogLevel.INFO, message="hello", trace_id="abc-123")
     d = entry.to_dict()
     assert d["trace_id"] == "abc-123"

@@ -16,6 +16,7 @@ import requests
 from logtide_sdk.circuit_breaker import CircuitBreaker
 from logtide_sdk.enums import CircuitState, LogLevel
 from logtide_sdk.exceptions import CircuitBreakerOpenError
+from logtide_sdk.json_encoder import logtide_json_dumps
 from logtide_sdk.models import (
     AggregatedStatsOptions,
     AggregatedStatsResponse,
@@ -78,12 +79,12 @@ def serialize_exception(exc: BaseException) -> Dict[str, Any]:
 
 def _process_value(value: Any, path: str, lim: PayloadLimitsOptions) -> Any:
     """Recursively apply payload limits to a metadata value."""
+    if value is None:
+        return
+
     field_name = path.split(".")[-1]
     if field_name in lim.exclude_fields:
         return "[EXCLUDED]"
-
-    if value is None:
-        return value
 
     if isinstance(value, str):
         if len(value) >= 100 and _looks_like_base64(value):
@@ -571,7 +572,7 @@ class LogTideClient:
             "Content-Type": "application/json",
         }
 
-    def _send_logs_with_retry(self, logs: List[LogEntry]) -> None:
+    def _send_logs_with_retry(self, log_entries: List[LogEntry]) -> None:
         """Send a batch of logs with exponential backoff and circuit breaker."""
         attempt = 0
         delay = self.options.retry_delay_ms / 1000.0
@@ -583,21 +584,21 @@ class LogTideClient:
                     if self.options.debug:
                         print("[LogTide] Circuit breaker open, skipping send")
                     with self._metrics_lock:
-                        self._metrics.logs_dropped += len(logs)
+                        self._metrics.logs_dropped += len(log_entries)
                     raise CircuitBreakerOpenError("Circuit breaker is open")
 
                 start_time = time.time()
-                self._send_logs(logs)
+                self._send_logs(log_entries)
                 latency = (time.time() - start_time) * 1000
 
                 self._circuit_breaker.record_success()
                 self._update_latency(latency)
 
                 with self._metrics_lock:
-                    self._metrics.logs_sent += len(logs)
+                    self._metrics.logs_sent += len(log_entries)
 
                 if self.options.debug:
-                    print(f"[LogTide] Sent {len(logs)} logs ({latency:.2f}ms)")
+                    print(f"[LogTide] Sent {len(log_entries)} logs ({latency:.2f}ms)")
 
                 return
 
@@ -617,7 +618,7 @@ class LogTideClient:
                     if self.options.debug:
                         print(f"[LogTide] Failed to send logs after {attempt} attempts: {e}")
                     with self._metrics_lock:
-                        self._metrics.logs_dropped += len(logs)
+                        self._metrics.logs_dropped += len(log_entries)
                     break
 
                 if self.options.debug:
@@ -627,7 +628,7 @@ class LogTideClient:
                 # The session is gone — all remaining attempts would fail anyway.
                 if self._closed:
                     with self._metrics_lock:
-                        self._metrics.logs_dropped += len(logs)
+                        self._metrics.logs_dropped += len(log_entries)
                     break
 
                 time.sleep(delay)
@@ -639,13 +640,14 @@ class LogTideClient:
             with self._metrics_lock:
                 self._metrics.circuit_breaker_trips += 1
 
-    def _send_logs(self, logs: List[LogEntry]) -> None:
+    def _send_logs(self, log_entries: List[LogEntry]) -> None:
         """POST a batch of serialized log entries to /api/v1/ingest."""
-        payload = {"logs": [log.to_dict() for log in logs]}
+        json_string = logtide_json_dumps({"logs": [log.to_dict() for log in log_entries]})
+
         response = self._session.post(
             f"{self.options.api_url}/api/v1/ingest",
             headers=self._get_headers(),
-            json=payload,
+            data=json_string,
             timeout=30,
         )
         response.raise_for_status()
@@ -687,7 +689,7 @@ class LogTideClient:
         entry.metadata = _process_value(entry.metadata, "root", lim)
 
         # Enforce total entry size
-        raw = json.dumps(entry.to_dict(), default=lambda o: repr(o))
+        raw = logtide_json_dumps(entry)
         if len(raw.encode()) > lim.max_log_size:
             if self.options.debug:
                 print(f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata")
