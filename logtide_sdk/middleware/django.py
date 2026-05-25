@@ -12,7 +12,7 @@ except ImportError:
         "Install it with: pip install logtide-sdk[django]"
     )
 
-from ..client import LogTideClient, serialize_exception
+from logtide_sdk.client import LogTideClient, serialize_exception
 
 
 class LogTideDjangoMiddleware:
@@ -113,7 +113,11 @@ class LogTideDjangoMiddleware:
         )
 
     def _log_response(
-        self, request: HttpRequest, response: HttpResponse, duration_ms: float, trace_id: Optional[str] = None
+        self,
+        request: HttpRequest,
+        response: HttpResponse,
+        duration_ms: float,
+        trace_id: Optional[str] = None,
     ) -> None:
         """Log response."""
         metadata = {
@@ -127,10 +131,7 @@ class LogTideDjangoMiddleware:
         if trace_id:
             metadata["trace_id"] = trace_id
 
-        message = (
-            f"{request.method} {request.path} "
-            f"{response.status_code} ({duration_ms:.0f}ms)"
-        )
+        message = f"{request.method} {request.path} {response.status_code} ({duration_ms:.0f}ms)"
 
         if response.status_code >= 500:
             self.client.error(self.service_name, message, metadata)
@@ -140,7 +141,11 @@ class LogTideDjangoMiddleware:
             self.client.info(self.service_name, message, metadata)
 
     def _log_error(
-        self, request: HttpRequest, error: Exception, duration_ms: float, trace_id: Optional[str] = None
+        self,
+        request: HttpRequest,
+        error: Exception,
+        duration_ms: float,
+        trace_id: Optional[str] = None,
     ) -> None:
         """Log error."""
         metadata = {

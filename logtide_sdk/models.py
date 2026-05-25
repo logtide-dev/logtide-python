@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from .enums import LogLevel
+from logtide_sdk.enums import LogLevel
 
 
 @dataclass

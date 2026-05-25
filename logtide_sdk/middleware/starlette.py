@@ -14,7 +14,7 @@ except ImportError:
         "Install it with: pip install logtide-sdk[starlette]"
     )
 
-from ..client import LogTideClient, serialize_exception
+from logtide_sdk.client import LogTideClient, serialize_exception
 
 
 class LogTideStarletteMiddleware(BaseHTTPMiddleware):
@@ -72,9 +72,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
         self.skip_paths: List[str] = list(skip_paths or [])
 
         if skip_health_check:
-            self.skip_paths.extend(
-                ["/health", "/healthz", "/docs", "/redoc", "/openapi.json"]
-            )
+            self.skip_paths.extend(["/health", "/healthz", "/docs", "/redoc", "/openapi.json"])
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and response, logging each phase."""
@@ -125,7 +123,11 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
         )
 
     def _log_response(
-        self, request: Request, response: Response, duration_ms: float, trace_id: Optional[str] = None
+        self,
+        request: Request,
+        response: Response,
+        duration_ms: float,
+        trace_id: Optional[str] = None,
     ) -> None:
         metadata = {
             "method": request.method,
@@ -139,8 +141,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
             metadata["trace_id"] = trace_id
 
         message = (
-            f"{request.method} {request.url.path} "
-            f"{response.status_code} ({duration_ms:.0f}ms)"
+            f"{request.method} {request.url.path} {response.status_code} ({duration_ms:.0f}ms)"
         )
 
         if response.status_code >= 500:

@@ -16,11 +16,11 @@ except ImportError:
         "Install it with: pip install logtide-sdk[async]"
     )
 
-from .circuit_breaker import CircuitBreaker
-from .client import _process_value, serialize_exception
-from .enums import CircuitState, LogLevel
-from .exceptions import CircuitBreakerOpenError
-from .models import (
+from logtide_sdk.circuit_breaker import CircuitBreaker
+from logtide_sdk.client import _process_value, serialize_exception
+from logtide_sdk.enums import CircuitState, LogLevel
+from logtide_sdk.exceptions import CircuitBreakerOpenError
+from logtide_sdk.models import (
     AggregatedStatsOptions,
     AggregatedStatsResponse,
     ClientMetrics,
@@ -182,7 +182,7 @@ class AsyncLogTideClient:
             await self.flush()
 
     async def debug(
-            self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
+        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Log a DEBUG-level message."""
         await self.log(
@@ -195,7 +195,7 @@ class AsyncLogTideClient:
         )
 
     async def info(
-            self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
+        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Log an INFO-level message."""
         await self.log(
@@ -208,7 +208,7 @@ class AsyncLogTideClient:
         )
 
     async def warn(
-            self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
+        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Log a WARN-level message."""
         await self.log(
@@ -221,10 +221,10 @@ class AsyncLogTideClient:
         )
 
     async def error(
-            self,
-            service: str,
-            message: str,
-            metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
+        self,
+        service: str,
+        message: str,
+        metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
     ) -> None:
         """Log an ERROR-level message. Accepts an Exception for automatic serialization."""
         metadata = self._process_metadata_or_error(metadata_or_error)
@@ -238,10 +238,10 @@ class AsyncLogTideClient:
         )
 
     async def critical(
-            self,
-            service: str,
-            message: str,
-            metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
+        self,
+        service: str,
+        message: str,
+        metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
     ) -> None:
         """Log a CRITICAL-level message. Accepts an Exception for automatic serialization."""
         metadata = self._process_metadata_or_error(metadata_or_error)
@@ -295,9 +295,9 @@ class AsyncLogTideClient:
             params["to"] = options.to_time.isoformat()
 
         async with self._get_session().get(
-                f"{self.options.api_url}/api/v1/logs",
-                headers=self._get_headers(),
-                params=params,
+            f"{self.options.api_url}/api/v1/logs",
+            headers=self._get_headers(),
+            params=params,
         ) as response:
             response.raise_for_status()
             data = await response.json()
@@ -306,14 +306,14 @@ class AsyncLogTideClient:
     async def get_by_trace_id(self, trace_id: str) -> List[Dict[str, Any]]:
         """Return all log entries for a given trace ID."""
         async with self._get_session().get(
-                f"{self.options.api_url}/api/v1/logs/trace/{trace_id}",
-                headers=self._get_headers(),
+            f"{self.options.api_url}/api/v1/logs/trace/{trace_id}",
+            headers=self._get_headers(),
         ) as response:
             response.raise_for_status()
             return await response.json()
 
     async def get_aggregated_stats(
-            self, options: AggregatedStatsOptions
+        self, options: AggregatedStatsOptions
     ) -> AggregatedStatsResponse:
         """Return aggregated statistics over a time range."""
         params: Dict[str, Any] = {
@@ -325,9 +325,9 @@ class AsyncLogTideClient:
             params["service"] = options.service
 
         async with self._get_session().get(
-                f"{self.options.api_url}/api/v1/logs/aggregated",
-                headers=self._get_headers(),
-                params=params,
+            f"{self.options.api_url}/api/v1/logs/aggregated",
+            headers=self._get_headers(),
+            params=params,
         ) as response:
             response.raise_for_status()
             data = await response.json()
@@ -338,10 +338,10 @@ class AsyncLogTideClient:
             )
 
     async def stream(
-            self,
-            on_log: Callable[[Dict[str, Any]], None],
-            on_error: Optional[Callable[[Exception], None]] = None,
-            filters: Optional[Dict[str, str]] = None,
+        self,
+        on_log: Callable[[Dict[str, Any]], None],
+        on_error: Optional[Callable[[Exception], None]] = None,
+        filters: Optional[Dict[str, str]] = None,
     ) -> None:
         """
         Stream logs in real-time via SSE. This coroutine runs until cancelled.
@@ -357,9 +357,9 @@ class AsyncLogTideClient:
         params["token"] = self.options.api_key
 
         async with self._get_session().get(
-                f"{self.options.api_url}/api/v1/logs/stream",
-                headers=self._get_headers(),
-                params=params,
+            f"{self.options.api_url}/api/v1/logs/stream",
+            headers=self._get_headers(),
+            params=params,
         ) as response:
             response.raise_for_status()
             async for line_bytes in response.content:
@@ -458,23 +458,18 @@ class AsyncLogTideClient:
 
                 if attempt > self.options.max_retries:
                     if self.options.debug:
-                        print(
-                            f"[LogTide] Failed to send logs after {attempt} attempts: {e}"
-                        )
+                        print(f"[LogTide] Failed to send logs after {attempt} attempts: {e}")
                     with self._metrics_lock:
                         self._metrics.logs_dropped += len(logs)
                     break
 
                 if self.options.debug:
-                    print(
-                        f"[LogTide] Retry {attempt}/{self.options.max_retries} in {delay}s"
-                    )
+                    print(f"[LogTide] Retry {attempt}/{self.options.max_retries} in {delay}s")
 
                 await asyncio.sleep(delay)
                 delay *= 2
 
-        if (self._circuit_breaker.state == CircuitState.OPEN
-                and state_before != CircuitState.OPEN):
+        if self._circuit_breaker.state == CircuitState.OPEN and state_before != CircuitState.OPEN:
             with self._metrics_lock:
                 self._metrics.circuit_breaker_trips += 1
 
@@ -482,14 +477,14 @@ class AsyncLogTideClient:
         """POST a serialized batch to /api/v1/ingest."""
         payload = {"logs": [log.to_dict() for log in logs]}
         async with self._get_session().post(
-                f"{self.options.api_url}/api/v1/ingest",
-                headers=self._get_headers(),
-                json=payload,
+            f"{self.options.api_url}/api/v1/ingest",
+            headers=self._get_headers(),
+            json=payload,
         ) as response:
             response.raise_for_status()
 
     def _process_metadata_or_error(
-            self, metadata_or_error: Union[Dict[str, Any], Exception, None]
+        self, metadata_or_error: Union[Dict[str, Any], Exception, None]
     ) -> Dict[str, Any]:
         if metadata_or_error is None:
             return {}
@@ -507,9 +502,7 @@ class AsyncLogTideClient:
         raw = json.dumps(entry.to_dict())
         if len(raw.encode()) > lim.max_log_size:
             if self.options.debug:
-                print(
-                    f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata"
-                )
+                print(f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata")
             entry.metadata = {"_truncated": True, "_original_size": len(raw.encode())}
 
     def _update_latency(self, latency: float) -> None:
@@ -518,6 +511,4 @@ class AsyncLogTideClient:
             if len(self._latency_window) > 100:
                 self._latency_window.pop(0)
             if self._latency_window:
-                self._metrics.avg_latency_ms = sum(self._latency_window) / len(
-                    self._latency_window
-                )
+                self._metrics.avg_latency_ms = sum(self._latency_window) / len(self._latency_window)

@@ -13,10 +13,10 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 import requests
 
-from .circuit_breaker import CircuitBreaker
-from .enums import CircuitState, LogLevel
-from .exceptions import CircuitBreakerOpenError
-from .models import (
+from logtide_sdk.circuit_breaker import CircuitBreaker
+from logtide_sdk.enums import CircuitState, LogLevel
+from logtide_sdk.exceptions import CircuitBreakerOpenError
+from logtide_sdk.models import (
     AggregatedStatsOptions,
     AggregatedStatsResponse,
     ClientMetrics,
@@ -253,9 +253,7 @@ class LogTideClient:
         if should_flush:
             self.flush()
 
-    def debug(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def debug(self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """Log a DEBUG-level message."""
         self.log(
             LogEntry(
@@ -266,9 +264,7 @@ class LogTideClient:
             )
         )
 
-    def info(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def info(self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """Log an INFO-level message."""
         self.log(
             LogEntry(
@@ -279,9 +275,7 @@ class LogTideClient:
             )
         )
 
-    def warn(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def warn(self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """Log a WARN-level message."""
         self.log(
             LogEntry(
@@ -414,9 +408,7 @@ class LogTideClient:
         response.raise_for_status()
         return response.json()
 
-    def get_aggregated_stats(
-        self, options: AggregatedStatsOptions
-    ) -> AggregatedStatsResponse:
+    def get_aggregated_stats(self, options: AggregatedStatsOptions) -> AggregatedStatsResponse:
         """
         Get aggregated log statistics over a time range.
 
@@ -623,17 +615,13 @@ class LogTideClient:
 
                 if attempt > self.options.max_retries:
                     if self.options.debug:
-                        print(
-                            f"[LogTide] Failed to send logs after {attempt} attempts: {e}"
-                        )
+                        print(f"[LogTide] Failed to send logs after {attempt} attempts: {e}")
                     with self._metrics_lock:
                         self._metrics.logs_dropped += len(logs)
                     break
 
                 if self.options.debug:
-                    print(
-                        f"[LogTide] Retry {attempt}/{self.options.max_retries} in {delay}s"
-                    )
+                    print(f"[LogTide] Retry {attempt}/{self.options.max_retries} in {delay}s")
 
                 # Abort retries if the client was closed while we were in-flight.
                 # The session is gone — all remaining attempts would fail anyway.
@@ -647,8 +635,7 @@ class LogTideClient:
 
         # Only count a trip when the circuit *transitions* to OPEN during this call,
         # not on every subsequent call while it's already open.
-        if (self._circuit_breaker.state == CircuitState.OPEN
-                and state_before != CircuitState.OPEN):
+        if self._circuit_breaker.state == CircuitState.OPEN and state_before != CircuitState.OPEN:
             with self._metrics_lock:
                 self._metrics.circuit_breaker_trips += 1
 
@@ -703,9 +690,7 @@ class LogTideClient:
         raw = json.dumps(entry.to_dict())
         if len(raw.encode()) > lim.max_log_size:
             if self.options.debug:
-                print(
-                    f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata"
-                )
+                print(f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata")
             entry.metadata = {
                 "_truncated": True,
                 "_original_size": len(raw.encode()),
@@ -718,6 +703,4 @@ class LogTideClient:
             if len(self._latency_window) > 100:
                 self._latency_window.pop(0)
             if self._latency_window:
-                self._metrics.avg_latency_ms = sum(self._latency_window) / len(
-                    self._latency_window
-                )
+                self._metrics.avg_latency_ms = sum(self._latency_window) / len(self._latency_window)

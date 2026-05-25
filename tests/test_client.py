@@ -1,15 +1,9 @@
 """Basic tests for LogTide SDK."""
 
-import time
-from datetime import datetime
-
 from logtide_sdk import (
     CircuitState,
     ClientOptions,
-    LogEntry,
-    LogLevel,
     LogTideClient,
-    QueryOptions,
 )
 
 

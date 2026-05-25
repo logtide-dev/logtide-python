@@ -4,15 +4,15 @@ import time
 from typing import Optional
 
 try:
-    from flask import Flask, Request, Response, g, make_response, request
     import werkzeug.exceptions as _werkzeug_exc
+    from flask import Flask, Response, g, make_response, request
 except ImportError:
     raise ImportError(
         "Flask is required for LogTideFlaskMiddleware. "
         "Install it with: pip install logtide-sdk[flask]"
     )
 
-from ..client import LogTideClient, serialize_exception
+from logtide_sdk.client import LogTideClient, serialize_exception
 
 
 class LogTideFlaskMiddleware:
@@ -133,9 +133,14 @@ class LogTideFlaskMiddleware:
         if self.include_headers:
             metadata["response_headers"] = dict(response.headers)
 
-        if self.include_body and response.content_type and "application/json" in response.content_type:
+        if (
+            self.include_body
+            and response.content_type
+            and "application/json" in response.content_type
+        ):
             try:
                 import json as _json
+
                 metadata["response_body"] = _json.loads(response.get_data(as_text=True))
             except Exception:
                 pass

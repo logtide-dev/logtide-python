@@ -4,8 +4,8 @@ import time
 from threading import Lock
 from typing import Callable, TypeVar
 
-from .enums import CircuitState
-from .exceptions import CircuitBreakerOpenError
+from logtide_sdk.enums import CircuitState
+from logtide_sdk.exceptions import CircuitBreakerOpenError
 
 T = TypeVar("T")
 

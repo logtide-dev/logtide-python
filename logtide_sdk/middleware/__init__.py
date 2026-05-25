@@ -8,28 +8,28 @@
 __all__ = []
 
 try:
-    from .flask import LogTideFlaskMiddleware
+    from logtide_sdk.flask import LogTideFlaskMiddleware
 
     __all__.append("LogTideFlaskMiddleware")
 except ImportError:
-    pass  # type: ignore[assignment]
+    pass
 
 try:
-    from .django import LogTideDjangoMiddleware
+    from logtide_sdk.django import LogTideDjangoMiddleware
 
     __all__.append("LogTideDjangoMiddleware")
 except ImportError:
-    pass  # type: ignore[assignment]
+    pass
 
 try:
-    from .fastapi import LogTideFastAPIMiddleware
+    from logtide_sdk.fastapi import LogTideFastAPIMiddleware
 
     __all__.append("LogTideFastAPIMiddleware")
 except ImportError:
-    pass  # type: ignore[assignment]
+    pass
 
 try:
-    from .starlette import LogTideStarletteMiddleware
+    from logtide_sdk.starlette import LogTideStarletteMiddleware
 
     __all__.append("LogTideStarletteMiddleware")
 except ImportError:
