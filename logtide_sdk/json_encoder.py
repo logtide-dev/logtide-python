@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import contextlib
 import dataclasses
 import datetime
@@ -16,6 +14,7 @@ from ipaddress import (
     IPv6Interface,
     IPv6Network,
 )
+from itertools import chain
 from pathlib import PosixPath
 from re import Pattern
 from types import GeneratorType
