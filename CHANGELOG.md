@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-05-26
+
+### Added
+
+- `LogTideProcessor` — a [structlog](https://www.structlog.org/) processor for forwarding
+  structlog events to LogTide (`from logtide_sdk.structlog import LogTideProcessor`). It maps
+  log levels, extracts non-reserved event fields into metadata, and serializes exceptions from
+  `exc_info`. `structlog` is **not** a hard dependency — it is only required if you use the processor
+- Robust JSON encoder (`logtide_json_dumps`) used for both payload-size calculation and the actual
+  request body. Metadata containing non-JSON-serializable values no longer raises at flush time —
+  Pydantic models, dataclasses, attrs classes, sets, `datetime`/`date`/`time`, `Decimal`, `UUID`,
+  `bytes`, IP addresses, `Path`, enums, generators, and `pandas`/`numpy` objects are all handled,
+  with circular references and unknown types degrading gracefully to `repr()`
+
+### Changed
+
+- **BREAKING** Dropped support for Python 3.8 and 3.9 (both EOL). Minimum supported version is now
+  **Python 3.10**
+- Internal imports converted from relative to absolute throughout the package
+
+### Contributors
+
+- [@apelsynca](https://github.com/apelsynca) — [#5](https://github.com/logtide-dev/logtide-python/pull/5)
+
 ## [0.8.5] - 2026-04-06
 
 ### Fixed
@@ -91,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FastAPI middleware for auto-logging HTTP requests
 - Full type hints support for Python 3.10+
 
+[0.9.0]: https://github.com/logtide-dev/logtide-python/compare/v0.8.5...v0.9.0
 [0.8.5]: https://github.com/logtide-dev/logtide-python/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/logtide-dev/logtide-python/compare/v0.1.0...v0.8.4
 [0.1.0]: https://github.com/logtide-dev/logtide-python/releases/tag/v0.1.0

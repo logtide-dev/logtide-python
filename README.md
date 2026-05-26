@@ -21,6 +21,7 @@
 
 - **Sync & async clients** — `LogTideClient` (requests) and `AsyncLogTideClient` (aiohttp)
 - **stdlib `logging` integration** — drop-in `LogTideHandler` for existing logging setups
+- **structlog integration** — `LogTideProcessor` to forward structlog events (optional, no hard dependency)
 - **Automatic batching** with configurable size and interval
 - **Retry logic** with exponential backoff
 - **Circuit breaker** pattern for fault tolerance
@@ -245,6 +246,41 @@ logger.error('Unhandled exception', exc_info=True)
 ```
 
 Exception info is serialized with full structured stack frames when `exc_info=True` is used.
+
+---
+
+## structlog Integration
+
+`LogTideProcessor` is a [structlog](https://www.structlog.org/) processor that forwards events to
+LogTide. `structlog` is not a hard dependency — install it separately if you use this integration.
+
+```python
+import structlog
+from logtide_sdk import LogTideClient, ClientOptions
+from logtide_sdk.structlog import LogTideProcessor
+
+client = LogTideClient(ClientOptions(
+    api_url='http://localhost:8080',
+    api_key='lp_your_api_key_here',
+))
+
+structlog.configure(
+    processors=[
+        structlog.processors.add_log_level,
+        LogTideProcessor(client=client, service='my-service'),
+        structlog.processors.JSONRenderer(),
+    ],
+)
+
+log = structlog.get_logger()
+log.info('user signed in', user_id=42, plan='pro')
+log.error('payment failed', order_id='o_123', exc_info=True)
+```
+
+Non-reserved event fields (e.g. `user_id`, `plan`) are sent as metadata, the log level is mapped
+to LogTide's levels, and `exc_info` is serialized into structured exception metadata. Metadata
+values that aren't natively JSON-serializable (Pydantic models, dataclasses, sets, `datetime`,
+`UUID`, …) are handled automatically.
 
 ---
 
