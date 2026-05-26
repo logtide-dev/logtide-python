@@ -1,20 +1,32 @@
 """Basic tests for LogTide SDK."""
 
-import time
-from datetime import datetime
+from dataclasses import dataclass
+from unittest.mock import MagicMock
+
+import pytest
+from pytest_mock import MockerFixture
 
 from logtide_sdk import (
     CircuitState,
     ClientOptions,
-    LogEntry,
-    LogLevel,
     LogTideClient,
-    QueryOptions,
 )
+from logtide_sdk.enums import LogLevel
+from logtide_sdk.json_encoder import logtide_json_dumps
+from logtide_sdk.models import LogEntry
+
+
+@pytest.fixture
+def client() -> LogTideClient:
+    return LogTideClient(
+        ClientOptions(
+            api_url="http://localhost:8080",
+            api_key="test_key",
+        )
+    )
 
 
 def test_client_initialization():
-    """Test client initialization."""
     client = LogTideClient(
         ClientOptions(
             api_url="http://localhost:8080",
@@ -27,15 +39,7 @@ def test_client_initialization():
     client.close()
 
 
-def test_logging_methods():
-    """Test basic logging methods."""
-    client = LogTideClient(
-        ClientOptions(
-            api_url="http://localhost:8080",
-            api_key="test_key",
-        )
-    )
-
+def test_logging_methods(client: LogTideClient):
     # Test all log levels
     client.debug("test-service", "Debug message")
     client.info("test-service", "Info message", {"key": "value"})
@@ -49,15 +53,8 @@ def test_logging_methods():
     client.close()
 
 
-def test_trace_id_context():
+def test_trace_id_context(client: LogTideClient):
     """Test trace ID context management."""
-    client = LogTideClient(
-        ClientOptions(
-            api_url="http://localhost:8080",
-            api_key="test_key",
-        )
-    )
-
     # Test manual trace ID
     client.set_trace_id("trace-123")
     assert client.get_trace_id() == "trace-123"
@@ -93,15 +90,8 @@ def test_auto_trace_id():
     client.close()
 
 
-def test_error_serialization():
+def test_error_serialization(client: LogTideClient):
     """Test error serialization produces structured exception metadata."""
-    client = LogTideClient(
-        ClientOptions(
-            api_url="http://localhost:8080",
-            api_key="test_key",
-        )
-    )
-
     try:
         raise ValueError("Test error")
     except Exception as e:
@@ -159,15 +149,7 @@ def test_metrics():
     client.close()
 
 
-def test_circuit_breaker_state():
-    """Test circuit breaker state."""
-    client = LogTideClient(
-        ClientOptions(
-            api_url="http://localhost:8080",
-            api_key="test_key",
-        )
-    )
-
+def test_circuit_breaker_state(client: LogTideClient):
     state = client.get_circuit_breaker_state()
     assert state == CircuitState.CLOSED
 
@@ -175,7 +157,6 @@ def test_circuit_breaker_state():
 
 
 def test_global_metadata():
-    """Test global metadata."""
     client = LogTideClient(
         ClientOptions(
             api_url="http://localhost:8080",
@@ -192,16 +173,61 @@ def test_global_metadata():
     client.close()
 
 
-if __name__ == "__main__":
-    # Run all tests
-    test_client_initialization()
-    test_logging_methods()
-    test_trace_id_context()
-    test_auto_trace_id()
-    test_error_serialization()
-    test_buffer_management()
-    test_metrics()
-    test_circuit_breaker_state()
-    test_global_metadata()
+@dataclass
+class CustomDataClass:
+    abc: int
 
-    print("✅ All tests passed!")
+
+def test_likes_json_metadata_data(client: LogTideClient, mocker: MockerFixture) -> None:
+    apply_payload_limits_mock = mocker.spy(client, "_apply_payload_limits")
+
+    # here class diff and set are not json serializeable (by default json)
+    entry = LogEntry(
+        service="service",
+        level=LogLevel.DEBUG,
+        message="some log entry",
+        metadata={"someWeirdObject": {1, 2, 3, 4, 5}, "idkOther": CustomDataClass(abc=42)},
+    )
+
+    client.log(entry)
+    apply_payload_limits_mock.assert_called_once_with(entry)
+
+
+# TODO: test for when there is trace_id
+def test_flush_with_unjsonable_payload_and_no_trace_id(
+    client: LogTideClient, mocker: MockerFixture
+) -> None:
+    """Test custom json encoder here and no trace_id: null in json_string"""
+
+    client._session.post = MagicMock()
+
+    entry = LogEntry(
+        service="kotiknyaa",
+        level=LogLevel.DEBUG,
+        message="Any message",
+        metadata={"someWeirdObject": {1, 2, 3, 4, 5}, "idkOther": CustomDataClass(abc=42)},
+    )
+    client._buffer = [entry]
+
+    client.flush()
+
+    # called with right data
+    json_string = logtide_json_dumps(
+        {
+            "logs": [
+                {
+                    "service": "kotiknyaa",
+                    "level": "debug",
+                    "message": "Any message",
+                    "time": entry.time,
+                    "metadata": {"someWeirdObject": [1, 2, 3, 4, 5], "idkOther": {"abc": 42}},
+                }  # WARN: ORDER MATTERS
+            ]
+        }
+    )
+    client._session.post.assert_called_once_with(
+        f"{client.options.api_url}/api/v1/ingest",
+        headers=client._get_headers(),
+        data=json_string,
+        timeout=30,
+    )

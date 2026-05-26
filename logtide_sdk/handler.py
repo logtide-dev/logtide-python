@@ -2,9 +2,9 @@
 
 import logging
 
-from .client import LogTideClient, serialize_exception
-from .enums import LogLevel
-from .models import LogEntry
+from logtide_sdk.client import LogTideClient, serialize_exception
+from logtide_sdk.enums import LogLevel
+from logtide_sdk.models import LogEntry
 
 
 class LogTideHandler(logging.Handler):

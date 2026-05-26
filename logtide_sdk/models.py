@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from .enums import LogLevel
+from logtide_sdk.enums import LogLevel
 
 
 @dataclass
@@ -13,7 +13,7 @@ class PayloadLimitsOptions:
 
     max_field_size: int = 10 * 1024  # 10 KB — truncate individual string fields above this
     max_log_size: int = 100 * 1024  # 100 KB — drop metadata entirely if entry exceeds this
-    exclude_fields: List[str] = field(default_factory=list)  # field names to redact
+    exclude_fields: list[str] = field(default_factory=list)  # field names to redact
     truncation_marker: str = "...[TRUNCATED]"  # appended to truncated strings
 
 
@@ -24,9 +24,9 @@ class LogEntry:
     service: str
     level: LogLevel
     message: str
-    time: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    trace_id: Optional[str] = None
+    time: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    trace_id: str | None = None
 
     def __post_init__(self) -> None:
         """Initialize default values."""
@@ -35,9 +35,9 @@ class LogEntry:
         elif self.time.endswith("+00:00"):
             self.time = self.time[:-6] + "Z"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "service": self.service,
             "level": self.level.value,
             "message": self.message,
@@ -64,22 +64,22 @@ class ClientOptions:
     circuit_breaker_reset_ms: int = 30000
     enable_metrics: bool = True
     debug: bool = False
-    global_metadata: Dict[str, Any] = field(default_factory=dict)
+    global_metadata: dict[str, Any] = field(default_factory=dict)
     auto_trace_id: bool = False
-    payload_limits: Optional[PayloadLimitsOptions] = None
+    payload_limits: PayloadLimitsOptions | None = None
 
 
 @dataclass
 class QueryOptions:
     """Options for querying logs."""
 
-    service: Optional[str] = None
-    level: Optional[LogLevel] = None
-    from_time: Optional[datetime] = None
-    to_time: Optional[datetime] = None
+    service: str | None = None
+    level: LogLevel | None = None
+    from_time: datetime | None = None
+    to_time: datetime | None = None
     limit: int = 100
     offset: int = 0
-    q: Optional[str] = None
+    q: str | None = None
 
 
 @dataclass
@@ -89,7 +89,7 @@ class AggregatedStatsOptions:
     from_time: datetime
     to_time: datetime
     interval: str = "1h"  # '1m' | '5m' | '1h' | '1d'
-    service: Optional[str] = None
+    service: str | None = None
 
 
 @dataclass
@@ -108,7 +108,7 @@ class ClientMetrics:
 class LogsResponse:
     """Response from logs query."""
 
-    logs: List[Dict[str, Any]]
+    logs: list[dict[str, Any]]
     total: int
 
 
@@ -116,6 +116,6 @@ class LogsResponse:
 class AggregatedStatsResponse:
     """Response from aggregated statistics query."""
 
-    timeseries: List[Dict[str, Any]]
-    top_services: List[Dict[str, Any]]
-    top_errors: List[Dict[str, Any]]
+    timeseries: list[dict[str, Any]]
+    top_services: list[dict[str, Any]]
+    top_errors: list[dict[str, Any]]

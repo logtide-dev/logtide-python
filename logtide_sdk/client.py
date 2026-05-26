@@ -7,16 +7,18 @@ import re
 import time
 import traceback
 import uuid
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from threading import Event, Lock, Thread, Timer
-from typing import Any, Callable, Dict, Iterator, List, Optional, Union
+from typing import Any
 
 import requests
 
-from .circuit_breaker import CircuitBreaker
-from .enums import CircuitState, LogLevel
-from .exceptions import CircuitBreakerOpenError
-from .models import (
+from logtide_sdk.circuit_breaker import CircuitBreaker
+from logtide_sdk.enums import CircuitState, LogLevel
+from logtide_sdk.exceptions import CircuitBreakerOpenError
+from logtide_sdk.json_encoder import logtide_json_dumps
+from logtide_sdk.models import (
     AggregatedStatsOptions,
     AggregatedStatsResponse,
     ClientMetrics,
@@ -41,7 +43,7 @@ def _looks_like_base64(s: str) -> bool:
     return bool(_BASE64_RE.match(s.replace("\n", "").replace("\r", "")))
 
 
-def serialize_exception(exc: BaseException) -> Dict[str, Any]:
+def serialize_exception(exc: BaseException) -> dict[str, Any]:
     """
     Serialize an exception into a structured format.
 
@@ -49,7 +51,7 @@ def serialize_exception(exc: BaseException) -> Dict[str, Any]:
     stacktrace is a list of frame dicts: {file, function, line}.
     Chained exceptions (exc.__cause__) are serialized recursively as 'cause'.
     """
-    frames: List[Dict[str, Any]] = []
+    frames: list[dict[str, Any]] = []
     tb = exc.__traceback__
     while tb is not None:
         frame = tb.tb_frame
@@ -62,7 +64,7 @@ def serialize_exception(exc: BaseException) -> Dict[str, Any]:
         )
         tb = tb.tb_next
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "type": type(exc).__name__,
         "message": str(exc),
         "language": "python",
@@ -78,12 +80,12 @@ def serialize_exception(exc: BaseException) -> Dict[str, Any]:
 
 def _process_value(value: Any, path: str, lim: PayloadLimitsOptions) -> Any:
     """Recursively apply payload limits to a metadata value."""
+    if value is None:
+        return
+
     field_name = path.split(".")[-1]
     if field_name in lim.exclude_fields:
         return "[EXCLUDED]"
-
-    if value is None:
-        return value
 
     if isinstance(value, str):
         if len(value) >= 100 and _looks_like_base64(value):
@@ -122,8 +124,8 @@ class LogTideClient:
             options: Client configuration options
         """
         self.options = options
-        self._buffer: List[LogEntry] = []
-        self._trace_id: Optional[str] = None
+        self._buffer: list[LogEntry] = []
+        self._trace_id: str | None = None
         self._buffer_lock = Lock()
         self._metrics_lock = Lock()
         self._metrics = ClientMetrics()
@@ -131,8 +133,8 @@ class LogTideClient:
             threshold=options.circuit_breaker_threshold,
             reset_timeout_ms=options.circuit_breaker_reset_ms,
         )
-        self._latency_window: List[float] = []
-        self._flush_timer: Optional[Timer] = None
+        self._latency_window: list[float] = []
+        self._flush_timer: Timer | None = None
         self._closed = False
         self._payload_limits = options.payload_limits or PayloadLimitsOptions()
 
@@ -153,7 +155,7 @@ class LogTideClient:
     # Trace ID helpers
     # -----------------------------------------------------------------------
 
-    def set_trace_id(self, trace_id: Optional[str]) -> None:
+    def set_trace_id(self, trace_id: str | None) -> None:
         """
         Set trace ID for subsequent logs.
 
@@ -162,7 +164,7 @@ class LogTideClient:
         """
         self._trace_id = trace_id
 
-    def get_trace_id(self) -> Optional[str]:
+    def get_trace_id(self) -> str | None:
         """
         Get current trace ID.
 
@@ -253,9 +255,7 @@ class LogTideClient:
         if should_flush:
             self.flush()
 
-    def debug(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def debug(self, service: str, message: str, metadata: dict[str, Any] | None = None) -> None:
         """Log a DEBUG-level message."""
         self.log(
             LogEntry(
@@ -266,9 +266,7 @@ class LogTideClient:
             )
         )
 
-    def info(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def info(self, service: str, message: str, metadata: dict[str, Any] | None = None) -> None:
         """Log an INFO-level message."""
         self.log(
             LogEntry(
@@ -279,9 +277,7 @@ class LogTideClient:
             )
         )
 
-    def warn(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def warn(self, service: str, message: str, metadata: dict[str, Any] | None = None) -> None:
         """Log a WARN-level message."""
         self.log(
             LogEntry(
@@ -296,7 +292,7 @@ class LogTideClient:
         self,
         service: str,
         message: str,
-        metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
+        metadata_or_error: dict[str, Any] | Exception | None = None,
     ) -> None:
         """
         Log an ERROR-level message.
@@ -320,7 +316,7 @@ class LogTideClient:
         self,
         service: str,
         message: str,
-        metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
+        metadata_or_error: dict[str, Any] | Exception | None = None,
     ) -> None:
         """
         Log a CRITICAL-level message.
@@ -371,7 +367,7 @@ class LogTideClient:
         Raises:
             requests.RequestException: On API error
         """
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "limit": options.limit,
             "offset": options.offset,
         }
@@ -396,7 +392,7 @@ class LogTideClient:
         data = response.json()
         return LogsResponse(logs=data.get("logs", []), total=data.get("total", 0))
 
-    def get_by_trace_id(self, trace_id: str) -> List[Dict[str, Any]]:
+    def get_by_trace_id(self, trace_id: str) -> list[dict[str, Any]]:
         """
         Get all logs belonging to a trace ID.
 
@@ -414,9 +410,7 @@ class LogTideClient:
         response.raise_for_status()
         return response.json()
 
-    def get_aggregated_stats(
-        self, options: AggregatedStatsOptions
-    ) -> AggregatedStatsResponse:
+    def get_aggregated_stats(self, options: AggregatedStatsOptions) -> AggregatedStatsResponse:
         """
         Get aggregated log statistics over a time range.
 
@@ -426,7 +420,7 @@ class LogTideClient:
         Returns:
             AggregatedStatsResponse with timeseries, top services, and top errors
         """
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "from": options.from_time.isoformat(),
             "to": options.to_time.isoformat(),
             "interval": options.interval,
@@ -450,9 +444,9 @@ class LogTideClient:
 
     def stream(
         self,
-        on_log: Callable[[Dict[str, Any]], None],
-        on_error: Optional[Callable[[Exception], None]] = None,
-        filters: Optional[Dict[str, str]] = None,
+        on_log: Callable[[dict[str, Any]], None],
+        on_error: Callable[[Exception], None] | None = None,
+        filters: dict[str, str] | None = None,
     ) -> Callable[[], None]:
         """
         Stream logs in real-time via Server-Sent Events.
@@ -472,7 +466,7 @@ class LogTideClient:
             # ... later:
             stop()
         """
-        params: Dict[str, str] = dict(filters or {})
+        params: dict[str, str] = dict(filters or {})
         params["token"] = self.options.api_key
         url = f"{self.options.api_url}/api/v1/logs/stream"
         stop_event = Event()
@@ -572,14 +566,14 @@ class LogTideClient:
     # Private helpers
     # -----------------------------------------------------------------------
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         """Return HTTP headers for all API requests."""
         return {
             "X-API-Key": self.options.api_key,
             "Content-Type": "application/json",
         }
 
-    def _send_logs_with_retry(self, logs: List[LogEntry]) -> None:
+    def _send_logs_with_retry(self, log_entries: list[LogEntry]) -> None:
         """Send a batch of logs with exponential backoff and circuit breaker."""
         attempt = 0
         delay = self.options.retry_delay_ms / 1000.0
@@ -591,21 +585,21 @@ class LogTideClient:
                     if self.options.debug:
                         print("[LogTide] Circuit breaker open, skipping send")
                     with self._metrics_lock:
-                        self._metrics.logs_dropped += len(logs)
+                        self._metrics.logs_dropped += len(log_entries)
                     raise CircuitBreakerOpenError("Circuit breaker is open")
 
                 start_time = time.time()
-                self._send_logs(logs)
+                self._send_logs(log_entries)
                 latency = (time.time() - start_time) * 1000
 
                 self._circuit_breaker.record_success()
                 self._update_latency(latency)
 
                 with self._metrics_lock:
-                    self._metrics.logs_sent += len(logs)
+                    self._metrics.logs_sent += len(log_entries)
 
                 if self.options.debug:
-                    print(f"[LogTide] Sent {len(logs)} logs ({latency:.2f}ms)")
+                    print(f"[LogTide] Sent {len(log_entries)} logs ({latency:.2f}ms)")
 
                 return
 
@@ -623,23 +617,19 @@ class LogTideClient:
 
                 if attempt > self.options.max_retries:
                     if self.options.debug:
-                        print(
-                            f"[LogTide] Failed to send logs after {attempt} attempts: {e}"
-                        )
+                        print(f"[LogTide] Failed to send logs after {attempt} attempts: {e}")
                     with self._metrics_lock:
-                        self._metrics.logs_dropped += len(logs)
+                        self._metrics.logs_dropped += len(log_entries)
                     break
 
                 if self.options.debug:
-                    print(
-                        f"[LogTide] Retry {attempt}/{self.options.max_retries} in {delay}s"
-                    )
+                    print(f"[LogTide] Retry {attempt}/{self.options.max_retries} in {delay}s")
 
                 # Abort retries if the client was closed while we were in-flight.
                 # The session is gone — all remaining attempts would fail anyway.
                 if self._closed:
                     with self._metrics_lock:
-                        self._metrics.logs_dropped += len(logs)
+                        self._metrics.logs_dropped += len(log_entries)
                     break
 
                 time.sleep(delay)
@@ -647,18 +637,18 @@ class LogTideClient:
 
         # Only count a trip when the circuit *transitions* to OPEN during this call,
         # not on every subsequent call while it's already open.
-        if (self._circuit_breaker.state == CircuitState.OPEN
-                and state_before != CircuitState.OPEN):
+        if self._circuit_breaker.state == CircuitState.OPEN and state_before != CircuitState.OPEN:
             with self._metrics_lock:
                 self._metrics.circuit_breaker_trips += 1
 
-    def _send_logs(self, logs: List[LogEntry]) -> None:
+    def _send_logs(self, log_entries: list[LogEntry]) -> None:
         """POST a batch of serialized log entries to /api/v1/ingest."""
-        payload = {"logs": [log.to_dict() for log in logs]}
+        json_string = logtide_json_dumps({"logs": [log.to_dict() for log in log_entries]})
+
         response = self._session.post(
             f"{self.options.api_url}/api/v1/ingest",
             headers=self._get_headers(),
-            json=payload,
+            data=json_string,
             timeout=30,
         )
         response.raise_for_status()
@@ -679,8 +669,8 @@ class LogTideClient:
             self._schedule_flush()
 
     def _process_metadata_or_error(
-        self, metadata_or_error: Union[Dict[str, Any], Exception, None]
-    ) -> Dict[str, Any]:
+        self, metadata_or_error: dict[str, Any] | Exception | None
+    ) -> dict[str, Any]:
         """
         Normalise the metadata_or_error parameter used by error() and critical().
         Exceptions are serialized to a structured 'exception' key.
@@ -700,12 +690,10 @@ class LogTideClient:
         entry.metadata = _process_value(entry.metadata, "root", lim)
 
         # Enforce total entry size
-        raw = json.dumps(entry.to_dict())
+        raw = logtide_json_dumps(entry)
         if len(raw.encode()) > lim.max_log_size:
             if self.options.debug:
-                print(
-                    f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata"
-                )
+                print(f"[LogTide] Log entry too large ({len(raw)} bytes), truncating metadata")
             entry.metadata = {
                 "_truncated": True,
                 "_original_size": len(raw.encode()),
@@ -718,6 +706,4 @@ class LogTideClient:
             if len(self._latency_window) > 100:
                 self._latency_window.pop(0)
             if self._latency_window:
-                self._metrics.avg_latency_ms = sum(self._latency_window) / len(
-                    self._latency_window
-                )
+                self._metrics.avg_latency_ms = sum(self._latency_window) / len(self._latency_window)

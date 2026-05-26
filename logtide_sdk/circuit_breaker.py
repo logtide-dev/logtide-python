@@ -1,11 +1,12 @@
 """Circuit breaker implementation for fault tolerance."""
 
 import time
+from collections.abc import Callable
 from threading import Lock
-from typing import Callable, TypeVar
+from typing import TypeVar
 
-from .enums import CircuitState
-from .exceptions import CircuitBreakerOpenError
+from logtide_sdk.enums import CircuitState
+from logtide_sdk.exceptions import CircuitBreakerOpenError
 
 T = TypeVar("T")
 
