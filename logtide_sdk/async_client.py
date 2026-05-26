@@ -5,8 +5,9 @@ import dataclasses
 import json
 import time
 import uuid
+from collections.abc import Callable
 from threading import Lock as ThreadingLock
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 try:
     import aiohttp
@@ -61,19 +62,19 @@ class AsyncLogTideClient:
             options: Client configuration options (same as LogTideClient)
         """
         self.options = options
-        self._buffer: List[LogEntry] = []
-        self._trace_id: Optional[str] = None
-        self._buffer_lock: Optional[asyncio.Lock] = None  # created lazily in first async call
+        self._buffer: list[LogEntry] = []
+        self._trace_id: str | None = None
+        self._buffer_lock: asyncio.Lock | None = None  # created lazily in first async call
         self._metrics_lock = ThreadingLock()
         self._metrics = ClientMetrics()
         self._circuit_breaker = CircuitBreaker(
             threshold=options.circuit_breaker_threshold,
             reset_timeout_ms=options.circuit_breaker_reset_ms,
         )
-        self._latency_window: List[float] = []
+        self._latency_window: list[float] = []
         self._payload_limits = options.payload_limits or PayloadLimitsOptions()
-        self._session: Optional[aiohttp.ClientSession] = None
-        self._flush_task: Optional[Any] = None  # asyncio.Task[None]
+        self._session: aiohttp.ClientSession | None = None
+        self._flush_task: Any | None = None  # asyncio.Task[None]
         self._closed = False
 
         if self.options.debug:
@@ -129,11 +130,11 @@ class AsyncLogTideClient:
     # Trace ID helpers
     # -----------------------------------------------------------------------
 
-    def set_trace_id(self, trace_id: Optional[str]) -> None:
+    def set_trace_id(self, trace_id: str | None) -> None:
         """Set trace ID for subsequent logs."""
         self._trace_id = trace_id
 
-    def get_trace_id(self) -> Optional[str]:
+    def get_trace_id(self) -> str | None:
         """Return the current trace ID."""
         return self._trace_id
 
@@ -183,7 +184,7 @@ class AsyncLogTideClient:
             await self.flush()
 
     async def debug(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
+        self, service: str, message: str, metadata: dict[str, Any] | None = None
     ) -> None:
         """Log a DEBUG-level message."""
         await self.log(
@@ -196,7 +197,7 @@ class AsyncLogTideClient:
         )
 
     async def info(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
+        self, service: str, message: str, metadata: dict[str, Any] | None = None
     ) -> None:
         """Log an INFO-level message."""
         await self.log(
@@ -209,7 +210,7 @@ class AsyncLogTideClient:
         )
 
     async def warn(
-        self, service: str, message: str, metadata: Optional[Dict[str, Any]] = None
+        self, service: str, message: str, metadata: dict[str, Any] | None = None
     ) -> None:
         """Log a WARN-level message."""
         await self.log(
@@ -225,7 +226,7 @@ class AsyncLogTideClient:
         self,
         service: str,
         message: str,
-        metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
+        metadata_or_error: dict[str, Any] | Exception | None = None,
     ) -> None:
         """Log an ERROR-level message. Accepts an Exception for automatic serialization."""
         metadata = self._process_metadata_or_error(metadata_or_error)
@@ -242,7 +243,7 @@ class AsyncLogTideClient:
         self,
         service: str,
         message: str,
-        metadata_or_error: Union[Dict[str, Any], Exception, None] = None,
+        metadata_or_error: dict[str, Any] | Exception | None = None,
     ) -> None:
         """Log a CRITICAL-level message. Accepts an Exception for automatic serialization."""
         metadata = self._process_metadata_or_error(metadata_or_error)
@@ -283,7 +284,7 @@ class AsyncLogTideClient:
 
     async def query(self, options: QueryOptions) -> LogsResponse:
         """Query logs with optional filters."""
-        params: Dict[str, Any] = {"limit": options.limit, "offset": options.offset}
+        params: dict[str, Any] = {"limit": options.limit, "offset": options.offset}
         if options.service:
             params["service"] = options.service
         if options.level:
@@ -304,7 +305,7 @@ class AsyncLogTideClient:
             data = await response.json()
             return LogsResponse(logs=data.get("logs", []), total=data.get("total", 0))
 
-    async def get_by_trace_id(self, trace_id: str) -> List[Dict[str, Any]]:
+    async def get_by_trace_id(self, trace_id: str) -> list[dict[str, Any]]:
         """Return all log entries for a given trace ID."""
         async with self._get_session().get(
             f"{self.options.api_url}/api/v1/logs/trace/{trace_id}",
@@ -317,7 +318,7 @@ class AsyncLogTideClient:
         self, options: AggregatedStatsOptions
     ) -> AggregatedStatsResponse:
         """Return aggregated statistics over a time range."""
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "from": options.from_time.isoformat(),
             "to": options.to_time.isoformat(),
             "interval": options.interval,
@@ -340,9 +341,9 @@ class AsyncLogTideClient:
 
     async def stream(
         self,
-        on_log: Callable[[Dict[str, Any]], None],
-        on_error: Optional[Callable[[Exception], None]] = None,
-        filters: Optional[Dict[str, str]] = None,
+        on_log: Callable[[dict[str, Any]], None],
+        on_error: Callable[[Exception], None] | None = None,
+        filters: dict[str, str] | None = None,
     ) -> None:
         """
         Stream logs in real-time via SSE. This coroutine runs until cancelled.
@@ -354,7 +355,7 @@ class AsyncLogTideClient:
             # ... later:
             task.cancel()
         """
-        params: Dict[str, str] = dict(filters or {})
+        params: dict[str, str] = dict(filters or {})
         params["token"] = self.options.api_key
 
         async with self._get_session().get(
@@ -401,7 +402,7 @@ class AsyncLogTideClient:
             self._session = aiohttp.ClientSession()
         return self._session
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         return {
             "X-API-Key": self.options.api_key,
             "Content-Type": "application/json",
@@ -415,7 +416,7 @@ class AsyncLogTideClient:
             if not self._closed:
                 await self.flush()
 
-    async def _send_logs_with_retry(self, logs: List[LogEntry]) -> None:
+    async def _send_logs_with_retry(self, logs: list[LogEntry]) -> None:
         """Send a batch with exponential backoff and circuit breaker."""
         attempt = 0
         delay = self.options.retry_delay_ms / 1000.0
@@ -474,7 +475,7 @@ class AsyncLogTideClient:
             with self._metrics_lock:
                 self._metrics.circuit_breaker_trips += 1
 
-    async def _send_logs(self, logs: List[LogEntry]) -> None:
+    async def _send_logs(self, logs: list[LogEntry]) -> None:
         json_string = logtide_json_dumps({"logs": [log.to_dict() for log in logs]})
 
         async with self._get_session().post(
@@ -485,8 +486,8 @@ class AsyncLogTideClient:
             response.raise_for_status()
 
     def _process_metadata_or_error(
-        self, metadata_or_error: Union[Dict[str, Any], Exception, None]
-    ) -> Dict[str, Any]:
+        self, metadata_or_error: dict[str, Any] | Exception | None
+    ) -> dict[str, Any]:
         if metadata_or_error is None:
             return {}
         if isinstance(metadata_or_error, dict):

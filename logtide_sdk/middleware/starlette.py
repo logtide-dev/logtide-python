@@ -1,7 +1,7 @@
 """Standalone Starlette ASGI middleware for LogTide SDK."""
 
 import time
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
 try:
     from starlette.middleware.base import BaseHTTPMiddleware
@@ -46,7 +46,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
         log_errors: bool = True,
         include_headers: bool = False,
         skip_health_check: bool = True,
-        skip_paths: Optional[List[str]] = None,
+        skip_paths: list[str] | None = None,
     ) -> None:
         """
         Initialize Starlette middleware.
@@ -69,7 +69,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
         self.log_responses = log_responses
         self.log_errors = log_errors
         self.include_headers = include_headers
-        self.skip_paths: List[str] = list(skip_paths or [])
+        self.skip_paths: list[str] = list(skip_paths or [])
 
         if skip_health_check:
             self.skip_paths.extend(["/health", "/healthz", "/docs", "/redoc", "/openapi.json"])
@@ -81,7 +81,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
 
         # Extract trace ID from request headers (kept local — not set on the shared client
         # to avoid race conditions across concurrent requests).
-        trace_id: Optional[str] = request.headers.get("x-trace-id")
+        trace_id: str | None = request.headers.get("x-trace-id")
 
         start_time = time.time()
 
@@ -105,7 +105,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
     def _should_skip(self, path: str) -> bool:
         return path in self.skip_paths
 
-    def _log_request(self, request: Request, trace_id: Optional[str] = None) -> None:
+    def _log_request(self, request: Request, trace_id: str | None = None) -> None:
         metadata = {
             "method": request.method,
             "path": request.url.path,
@@ -127,7 +127,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
         request: Request,
         response: Response,
         duration_ms: float,
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
     ) -> None:
         metadata = {
             "method": request.method,
@@ -152,7 +152,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
             self.client.info(self.service_name, message, metadata)
 
     def _log_error(
-        self, request: Request, error: Exception, duration_ms: float, trace_id: Optional[str] = None
+        self, request: Request, error: Exception, duration_ms: float, trace_id: str | None = None
     ) -> None:
         metadata = {
             "method": request.method,
@@ -168,7 +168,7 @@ class LogTideStarletteMiddleware(BaseHTTPMiddleware):
             metadata,
         )
 
-    def _get_client_ip(self, request: Request) -> Optional[str]:
+    def _get_client_ip(self, request: Request) -> str | None:
         x_forwarded_for = request.headers.get("x-forwarded-for")
         if x_forwarded_for:
             return x_forwarded_for.split(",")[0].strip()

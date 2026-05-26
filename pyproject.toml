@@ -9,7 +9,7 @@ description = "Official Python SDK for LogTide - Self-hosted log management with
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Polliog", email = "giuseppe@solture.it" }]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 keywords = [
   "logtide",
   "logging",
@@ -30,15 +30,15 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
   "Topic :: System :: Logging",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Framework :: AsyncIO",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = ["requests>=2.31.0"]
@@ -82,10 +82,10 @@ logtide_sdk = ["py.typed"]
 
 [tool.black]
 line-length = 100
-target-version = ["py38", "py39", "py310", "py311", "py312"]
+target-version = ["py310", "py311", "py312"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
@@ -93,11 +93,22 @@ disallow_untyped_defs = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = []
+extend-select = [
+  "I",
+  "UP",
+  "T20",
+  "B039",
+  "PT",
+  "RUF022",
+  "RUF023",
+  "RUF10",  # RUF10x
+  "RUF20",  # RUF200
+]
+ignore = ["F841"]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

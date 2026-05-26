@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://pypi.org/project/logtide-sdk/"><img src="https://img.shields.io/pypi/v/logtide-sdk?color=blue" alt="PyPI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.8+-blue.svg" alt="Python"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python"></a>
   <a href="https://github.com/logtide-dev/logtide-python/releases"><img src="https://img.shields.io/github/v/release/logtide-dev/logtide-python" alt="Release"></a>
 </p>
 
@@ -33,11 +33,11 @@
 - **Structured exception serialization** with parsed stack frames
 - **Internal metrics** (logs sent, errors, latency, circuit breaker trips)
 - **Flask, Django, FastAPI & Starlette middleware** for auto-logging HTTP requests
-- **Full Python 3.8+ support** with type hints
+- **Full Python 3.10+ support** with type hints
 
 ## Requirements
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 
 ## Installation
 
@@ -92,37 +92,37 @@ client.close()
 
 ### Basic Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `api_url` | `str` | **required** | Base URL of your LogTide instance |
-| `api_key` | `str` | **required** | Project API key (starts with `lp_`) |
-| `batch_size` | `int` | `100` | Logs per batch before an immediate flush |
-| `flush_interval` | `int` | `5000` | Auto-flush interval in ms |
+| Option           | Type  | Default      | Description                              |
+| ---------------- | ----- | ------------ | ---------------------------------------- |
+| `api_url`        | `str` | **required** | Base URL of your LogTide instance        |
+| `api_key`        | `str` | **required** | Project API key (starts with `lp_`)      |
+| `batch_size`     | `int` | `100`        | Logs per batch before an immediate flush |
+| `flush_interval` | `int` | `5000`       | Auto-flush interval in ms                |
 
 ### Advanced Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `max_buffer_size` | `int` | `10000` | Max buffered logs; excess are silently dropped |
-| `max_retries` | `int` | `3` | Max retry attempts on send failure |
-| `retry_delay_ms` | `int` | `1000` | Initial retry delay (doubles each attempt) |
-| `circuit_breaker_threshold` | `int` | `5` | Consecutive failures before opening circuit |
-| `circuit_breaker_reset_ms` | `int` | `30000` | Time before testing a half-open circuit |
-| `debug` | `bool` | `False` | Print debug output to console |
-| `global_metadata` | `dict` | `{}` | Metadata merged into every log entry |
-| `auto_trace_id` | `bool` | `False` | Auto-generate a UUID trace ID per log |
-| `payload_limits` | `PayloadLimitsOptions` | see below | Safeguards against oversized payloads |
+| Option                      | Type                   | Default   | Description                                    |
+| --------------------------- | ---------------------- | --------- | ---------------------------------------------- |
+| `max_buffer_size`           | `int`                  | `10000`   | Max buffered logs; excess are silently dropped |
+| `max_retries`               | `int`                  | `3`       | Max retry attempts on send failure             |
+| `retry_delay_ms`            | `int`                  | `1000`    | Initial retry delay (doubles each attempt)     |
+| `circuit_breaker_threshold` | `int`                  | `5`       | Consecutive failures before opening circuit    |
+| `circuit_breaker_reset_ms`  | `int`                  | `30000`   | Time before testing a half-open circuit        |
+| `debug`                     | `bool`                 | `False`   | Print debug output to console                  |
+| `global_metadata`           | `dict`                 | `{}`      | Metadata merged into every log entry           |
+| `auto_trace_id`             | `bool`                 | `False`   | Auto-generate a UUID trace ID per log          |
+| `payload_limits`            | `PayloadLimitsOptions` | see below | Safeguards against oversized payloads          |
 
 ### Payload Limits
 
 `PayloadLimitsOptions` prevents 413 errors from oversized entries.
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `max_field_size` | `10 * 1024` (10 KB) | Max length of any single string field |
-| `max_log_size` | `100 * 1024` (100 KB) | Max total serialized entry size |
-| `exclude_fields` | `[]` | Field names replaced with `"[EXCLUDED]"` |
-| `truncation_marker` | `"...[TRUNCATED]"` | Appended to truncated strings |
+| Field               | Default               | Description                              |
+| ------------------- | --------------------- | ---------------------------------------- |
+| `max_field_size`    | `10 * 1024` (10 KB)   | Max length of any single string field    |
+| `max_log_size`      | `100 * 1024` (100 KB) | Max total serialized entry size          |
+| `exclude_fields`    | `[]`                  | Field names replaced with `"[EXCLUDED]"` |
+| `truncation_marker` | `"...[TRUNCATED]"`    | Appended to truncated strings            |
 
 ```python
 from logtide_sdk import LogTideClient, ClientOptions, PayloadLimitsOptions
@@ -167,15 +167,14 @@ except Exception as e:
 ```
 
 Generated metadata:
+
 ```json
 {
   "exception": {
     "type": "RuntimeError",
     "message": "Database timeout",
     "language": "python",
-    "stacktrace": [
-      {"file": "app.py", "function": "run_query", "line": 42}
-    ],
+    "stacktrace": [{ "file": "app.py", "function": "run_query", "line": 42 }],
     "raw": "Traceback (most recent call last):\n  ..."
   }
 }

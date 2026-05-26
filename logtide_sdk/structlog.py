@@ -1,5 +1,5 @@
 import sys
-from typing import TYPE_CHECKING, FrozenSet
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from structlog.typing import EventDict, WrappedLogger
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 from logtide_sdk import LogEntry, LogLevel, serialize_exception
 
-LOGGING_RESERVED_ATTRS: FrozenSet[str] = frozenset(
+LOGGING_RESERVED_ATTRS: frozenset[str] = frozenset(
     [
         "args",
         "asctime",

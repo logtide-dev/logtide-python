@@ -1,7 +1,6 @@
 """Flask middleware for LogTide SDK."""
 
 import time
-from typing import Optional
 
 try:
     import werkzeug.exceptions as _werkzeug_exc
@@ -40,7 +39,7 @@ class LogTideFlaskMiddleware:
         include_headers: bool = False,
         include_body: bool = False,
         skip_health_check: bool = True,
-        skip_paths: Optional[list] = None,
+        skip_paths: list | None = None,
     ) -> None:
         """
         Initialize Flask middleware.

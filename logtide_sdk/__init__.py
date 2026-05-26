@@ -26,22 +26,22 @@ except ImportError:
 __version__ = "0.8.5"
 
 __all__ = [
-    "LogTideClient",
-    "LogTideHandler",
-    "serialize_exception",
-    "LogEntry",
-    "ClientOptions",
-    "QueryOptions",
     "AggregatedStatsOptions",
-    "ClientMetrics",
-    "LogsResponse",
     "AggregatedStatsResponse",
-    "PayloadLimitsOptions",
-    "LogLevel",
-    "CircuitState",
-    "LogTideError",
-    "CircuitBreakerOpenError",
     "BufferFullError",
+    "CircuitBreakerOpenError",
+    "CircuitState",
+    "ClientMetrics",
+    "ClientOptions",
+    "LogEntry",
+    "LogLevel",
+    "LogTideClient",
+    "LogTideError",
+    "LogTideHandler",
+    "LogsResponse",
+    "PayloadLimitsOptions",
+    "QueryOptions",
+    "serialize_exception",
 ]
 
 if _has_async:

@@ -4,6 +4,7 @@ import contextlib
 import dataclasses
 import datetime
 import json
+from collections.abc import Callable, Mapping, Sequence
 from decimal import Decimal
 from enum import Enum
 from functools import cache, lru_cache
@@ -18,7 +19,7 @@ from ipaddress import (
 from pathlib import PosixPath
 from re import Pattern
 from types import GeneratorType
-from typing import Any, Callable, Mapping, Sequence, Union
+from typing import Any, Union
 from uuid import UUID
 
 

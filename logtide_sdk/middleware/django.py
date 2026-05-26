@@ -1,7 +1,7 @@
 """Django middleware for LogTide SDK."""
 
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 try:
     from django.conf import settings
@@ -66,7 +66,7 @@ class LogTideDjangoMiddleware:
 
         # Extract trace ID from headers (kept local — not set on the shared client
         # to avoid race conditions across concurrent requests).
-        trace_id: Optional[str] = request.headers.get("X-Trace-ID")
+        trace_id: str | None = request.headers.get("X-Trace-ID")
 
         # Log request
         start_time = time.time()
@@ -94,7 +94,7 @@ class LogTideDjangoMiddleware:
         """Check if path should be skipped."""
         return path in self.skip_paths
 
-    def _log_request(self, request: HttpRequest, trace_id: Optional[str] = None) -> None:
+    def _log_request(self, request: HttpRequest, trace_id: str | None = None) -> None:
         """Log incoming request."""
         metadata = {
             "method": request.method,
@@ -117,7 +117,7 @@ class LogTideDjangoMiddleware:
         request: HttpRequest,
         response: HttpResponse,
         duration_ms: float,
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
     ) -> None:
         """Log response."""
         metadata = {
@@ -145,7 +145,7 @@ class LogTideDjangoMiddleware:
         request: HttpRequest,
         error: Exception,
         duration_ms: float,
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
     ) -> None:
         """Log error."""
         metadata = {
@@ -162,7 +162,7 @@ class LogTideDjangoMiddleware:
             metadata,
         )
 
-    def _get_client_ip(self, request: HttpRequest) -> Optional[str]:
+    def _get_client_ip(self, request: HttpRequest) -> str | None:
         """Get client IP address."""
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:

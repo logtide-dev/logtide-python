@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flask middleware for auto-logging HTTP requests
 - Django middleware for auto-logging HTTP requests
 - FastAPI middleware for auto-logging HTTP requests
-- Full type hints support for Python 3.8+
+- Full type hints support for Python 3.10+
 
 [0.8.5]: https://github.com/logtide-dev/logtide-python/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/logtide-dev/logtide-python/compare/v0.1.0...v0.8.4
