@@ -8,7 +8,7 @@ except ImportError:
         "Install it with: pip install logtide-sdk[fastapi]"
     )
 
-from logtide_sdk.starlette import LogTideStarletteMiddleware
+from logtide_sdk.middleware.starlette import LogTideStarletteMiddleware
 
 # LogTideFastAPIMiddleware is a type alias for backwards compatibility.
 # FastAPI is built on Starlette so the same middleware class works for both.
