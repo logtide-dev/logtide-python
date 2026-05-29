@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-05-29
+
+### Fixed
+
+- `LogTideFastAPIMiddleware` import failed because `middleware/fastapi.py` imported
+  `LogTideStarletteMiddleware` from the wrong path (`logtide_sdk.starlette` instead of
+  `logtide_sdk.middleware.starlette`) — the FastAPI middleware now imports correctly
+
+### Added
+
+- Import tests covering all four framework middlewares (`tests/middleware/test_imports.py`)
+
+### Contributors
+
+- [@apelsynca](https://github.com/apelsynca) — [#6](https://github.com/logtide-dev/logtide-python/pull/6)
+
 ## [0.9.0] - 2026-05-26
 
 ### Added
@@ -115,6 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FastAPI middleware for auto-logging HTTP requests
 - Full type hints support for Python 3.10+
 
+[0.9.1]: https://github.com/logtide-dev/logtide-python/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/logtide-dev/logtide-python/compare/v0.8.5...v0.9.0
 [0.8.5]: https://github.com/logtide-dev/logtide-python/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/logtide-dev/logtide-python/compare/v0.1.0...v0.8.4
