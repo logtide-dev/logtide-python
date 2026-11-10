@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - Unreleased
+
+### Fixed
+
+- **Fork safety for `LogTideClient`**: a client created before `fork()` (prefork servers such as Odoo with `workers > 0`, gunicorn `--preload`, uWSGI, Celery prefork, `multiprocessing` with the fork start method) now keeps working in the child. An `os.register_at_fork` hook recreates the buffer lock, metrics lock, circuit breaker, HTTP session and flush timer in the child, with a pid check in `log()`/`flush()` as a fallback. Previously the child inherited a dead flush timer (logs only left on a full batch or were lost on worker recycle), a shared connection pool and possibly a lock held by a thread that no longer exists (deadlock on first log). Entries still buffered at fork time stay with the parent and are not sent twice
+
 ## [0.10.0] - 2026-07-17
 
 ### Added
