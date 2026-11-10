@@ -3,8 +3,10 @@
 import atexit
 import dataclasses
 import json
+import os
 import random
 import time
+import weakref
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from threading import Event, Lock, Thread, Timer
@@ -33,6 +35,22 @@ from logtide_sdk.tracecontext import generate_trace_id
 # ---------------------------------------------------------------------------
 # Module-level helpers (importable by async_client and middleware)
 # ---------------------------------------------------------------------------
+
+
+# Live sync clients, so a single at-fork hook can reset all of them in the child.
+_live_clients: "weakref.WeakSet[LogTideClient]" = weakref.WeakSet()
+
+
+def _reinit_clients_after_fork() -> None:
+    for client in list(_live_clients):
+        try:
+            client._reinit_after_fork()
+        except Exception:
+            pass
+
+
+if hasattr(os, "register_at_fork"):  # POSIX only; Windows has no fork()
+    os.register_at_fork(after_in_child=_reinit_clients_after_fork)
 
 
 # ---------------------------------------------------------------------------
@@ -68,12 +86,16 @@ class LogTideClient(BaseClient):
         self._latency_window: list[float] = []
         self._flush_timer: Timer | None = None
         self._closed = False
+        self._pid = os.getpid()
 
         # Persistent HTTP session for connection reuse across requests
         self._session = requests.Session()
 
         # Register cleanup on interpreter exit
         atexit.register(self.close)
+
+        # Reset locks, session and flush timer in forked children (prefork servers)
+        _live_clients.add(self)
 
         # Start timer-based auto-flush
         if options.flush_interval > 0:
@@ -152,6 +174,7 @@ class LogTideClient(BaseClient):
         if self._is_logging_disabled():
             return
 
+        self._check_pid()
         self._pin_trace_id_to_entry(entry)
 
         # Merge global metadata (entry metadata wins on collision)
@@ -353,6 +376,7 @@ class LogTideClient(BaseClient):
 
     def flush(self) -> None:
         """Flush all buffered logs to the LogTide API immediately."""
+        self._check_pid()
         with self._buffer_lock:
             if not self._buffer:
                 return
@@ -668,6 +692,38 @@ class LogTideClient(BaseClient):
             timeout=30,
         )
         response.raise_for_status()
+
+    def _check_pid(self) -> None:
+        """Fallback for forks that bypassed ``os.register_at_fork``."""
+        if self._pid != os.getpid():
+            self._reinit_after_fork()
+
+    def _reinit_after_fork(self) -> None:
+        """
+        Make the client usable in a forked child process.
+
+        After ``fork()`` only the forking thread survives: the flush timer is
+        dead, locks may be held by threads that no longer exist, and the HTTP
+        connection pool is shared with the parent. Everything process-bound is
+        recreated. Entries still buffered belong to the parent (which sends
+        them), so the child's copy is dropped to avoid duplicates.
+        """
+        if self._pid == os.getpid():
+            return
+        self._pid = os.getpid()
+        self._buffer = []
+        self._buffer_lock = Lock()
+        self._metrics_lock = Lock()
+        self._metrics = ClientMetrics()
+        self._latency_window = []
+        self._circuit_breaker = CircuitBreaker(
+            threshold=self.options.circuit_breaker_threshold,
+            reset_timeout_ms=self.options.circuit_breaker_reset_ms,
+        )
+        self._session = requests.Session()
+        self._flush_timer = None
+        if not self._closed and self.options.flush_interval > 0:
+            self._schedule_flush()
 
     def _schedule_flush(self) -> None:
         """Schedule the next timer-based auto-flush."""
